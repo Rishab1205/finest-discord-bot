@@ -517,13 +517,18 @@ async def send_payment_dm(member, ticket_channel):
         print("❌ DM FAILED FOR", member.name, "REASON:", repr(e))
         
 # ================= ROLE + ACCESS LOGIC =================
-async def process_member(member):
+asyncasync def process_member(member):
     try:
         import aiohttp
+        import asyncio
+
+        await asyncio.sleep(5)  # allow Discord cache to settle
+
+        BACKEND_URL = "https://valid-manager-production.up.railway.app"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"https://valid-manager-production.up.railway.app/{member.id}"
+                f"{BACKEND_URL}/check-payment/{member.id}"
             ) as resp:
                 data = await resp.json()
 
@@ -536,27 +541,33 @@ async def process_member(member):
         product = data["data"]["product"]
         payment_status = data["data"]["status"]
 
+        status = payment_status.lower() in ("paid", "success", "completed", "done")
+
+        if not status:
+            print("❌ Payment status invalid:", payment_status)
+            return None
+
         guild = member.guild
         paid_role = guild.get_role(FINEST_MEMBER_ROLE)
 
-        if status and paid_role and paid_role not in member.roles:
+        # ✅ ASSIGN ROLE
+        if paid_role and paid_role not in member.roles:
             await member.add_roles(paid_role)
             print("✅ Finest role assigned")
-            
-        if status:
-            ticket = await create_ticket(member, header, row)
-            if ticket:
-                await send_payment_dm(member, ticket)
-                print("✅ Ticket + DM sent")
-                return ticket
 
-        print("❌ Status not paid:", raw_status)
+        # ✅ CREATE TICKET
+        ticket = await create_ticket(member)
+        if ticket:
+            await send_payment_dm(member, ticket)
+            print("✅ Ticket + DM sent")
+            return ticket
+
+        print("⚠️ Ticket not created")
         return None
 
     except Exception as e:
         print("🔥 process_member fatal error:", repr(e))
         return None
-
 # ================= PAID PACK AUTO-DETECT (NEW USERS) =================
 async def delayed_process_member(member):
     await asyncio.sleep(8)  # allow Google Sheet to sync
@@ -719,6 +730,17 @@ async def price_cmd(interaction: Interaction):
 async def uptime_cmd(interaction: Interaction):
     delta = datetime.datetime.utcnow() - start_time
     await interaction.response.send_message(f"⏳ Bot Uptime: `{delta}`")
+
+@tree.command(name="resync", description="Force resync your purchase")
+async def resync(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    ticket = await process_member(interaction.user)
+
+    if ticket:
+        await interaction.followup.send("✅ Purchase synced successfully.", ephemeral=True)
+    else:
+        await interaction.followup.send("❌ No paid record found yet.", ephemeral=True)
 
 @tree.command(name="refresh", description="Sync your purchase & unlock access")
 async def refresh_cmd(interaction: discord.Interaction):
