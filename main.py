@@ -519,19 +519,22 @@ async def send_payment_dm(member, ticket_channel):
 # ================= ROLE + ACCESS LOGIC =================
 async def process_member(member):
     try:
-        row_index, header, row = find_user_row(str(member.id))
-        if not row_index:
-            print("❌ No sheet row found yet for", member.id)
+        import aiohttp
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"https://valid-manager-production.up.railway.app/{member.id}"
+            ) as resp:
+                data = await resp.json()
+
+        if not data.get("paid"):
+            print("❌ No paid record found for", member.id)
             return None
 
-        try:
-            status_col = header.index("Status")
-            raw_status = row[status_col].strip().lower()
-        except Exception:
-            raw_status = ""
+        print("✅ Paid record found for", member.id)
 
-        status = raw_status in ("paid", "success", "completed", "done")
-        print("🧾 Payment status:", raw_status)
+        product = data["data"]["product"]
+        payment_status = data["data"]["status"]
 
         guild = member.guild
         paid_role = guild.get_role(FINEST_MEMBER_ROLE)
@@ -539,14 +542,7 @@ async def process_member(member):
         if status and paid_role and paid_role not in member.roles:
             await member.add_roles(paid_role)
             print("✅ Finest role assigned")
-
-        try:
-            update_role_assigned(row_index)
-            from sheet import update_profile_sheet
-            update_profile_sheet(member, row)
-        except Exception as e:
-            print("[SHEET ERROR]", e)
-
+            
         if status:
             ticket = await create_ticket(member, header, row)
             if ticket:
