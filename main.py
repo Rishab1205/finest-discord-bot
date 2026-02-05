@@ -519,6 +519,7 @@ async def send_payment_dm(member, ticket_channel):
 # ================= ROLE + ACCESS LOGIC =================
 asyncasync def process_member(member):
     try:
+        print("🚨 process_member CALLED for", member.id)
         import aiohttp
         import asyncio
 
