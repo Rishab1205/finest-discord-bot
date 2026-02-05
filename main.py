@@ -126,9 +126,6 @@ def ai_reply(user_msg: str) -> str:
         return r.json()['choices'][0]['message']['content']
     except:
         return "Sir, I couldn’t parse the response but the request went through."
-
-from sheet import find_user_row, update_role_assigned
-
 # ================= PRODUCT DATA =================
 PRODUCTS = {
     "free pack": {"price": 0, "desc": "Regedit ASL Pro, Delay Reduction, GPU Regedit, Device tweaks"},
@@ -428,7 +425,11 @@ class TicketModal(Modal, title="Open Support Ticket"):
         await create_ticket(self.member, header, row)
 
 # ================= TICKET CREATION =================
-async def create_ticket(member: discord.Member, header, row):
+async def create_ticket(member: discord.Member, header=None, row=None):
+    if header is None:
+        header = ["Name", "Product", "Payment ID", "Status"]
+    if row is None:
+        row = [member.name, "PAID PACK", "AUTO", "PAID"]
     guild = member.guild
     category = guild.get_channel(TICKET_CATEGORY_ID)
     log = bot.get_channel(LOG_CHANNEL_ID)
@@ -436,10 +437,15 @@ async def create_ticket(member: discord.Member, header, row):
     if not category:
         print("[ERROR] Ticket category missing.")
         return None
-
+    # 🔒 Prevent duplicate tickets
+    for channel in guild.text_channels:
+        if channel.name == f"ticket-{member.name}":
+            return channel
+        
     data = dict(zip(header, row))
+
     ticket = await guild.create_text_channel(
-        name=f"ticket-{member.name}",
+        name=f"ticket-{member.id}",
         category=category,
         overwrites={
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -483,6 +489,7 @@ Upload your screenshot → <#{PAYOUT_CHANNEL_ID}>
     return ticket
 
 # ================= PAYMENT DM (ADDED) =================
+
 async def send_payment_dm(member, ticket_channel):
     await asyncio.sleep(1)  # delay for Discord DM handshake
     try:
@@ -517,7 +524,8 @@ async def send_payment_dm(member, ticket_channel):
         print("❌ DM FAILED FOR", member.name, "REASON:", repr(e))
         
 # ================= ROLE + ACCESS LOGIC =================
-asyncasync def process_member(member):
+
+async def process_member(member):
     try:
         print("🚨 process_member CALLED for", member.id)
         import aiohttp
