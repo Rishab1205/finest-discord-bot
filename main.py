@@ -631,7 +631,6 @@ async def on_ready():
     except Exception as e:
         print("❌ on_ready failed:", repr(e))
 
-        
 @bot.event
 async def on_member_join(member):
     now = time.time()
@@ -643,7 +642,11 @@ async def on_member_join(member):
     if len(join_tracker) >= RAID_JOIN_LIMIT:
         await lock_server(member.guild)
 
+    # existing welcome DM
     await send_join_dm(member)
+
+    # 🔥 THIS LINE WAS MISSING 🔥
+    await process_member(member)
 
     # ================= FREE PACK HANDLER =================
     if str(member.id) in freeClaimUsers:
