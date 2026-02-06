@@ -6,7 +6,6 @@ from datetime import datetime
 from collections import deque
 
 # ================= FREE PACK STORAGE =================
-freeClaimUsers = {}
 
 app = Flask('')
 @app.route('/')
@@ -528,10 +527,7 @@ async def send_payment_dm(member, ticket_channel):
 async def process_member(member):
     try:
         print("🚨 process_member CALLED for", member.id)
-        import aiohttp
-        import asyncio
-
-        await asyncio.sleep(5)  # allow Discord cache to settle
+        await asyncio.sleep(5)
 
         BACKEND_URL = "https://finest-backend-production.up.railway.app"
 
@@ -542,41 +538,59 @@ async def process_member(member):
                 data = await resp.json()
 
         if not data.get("paid"):
-            print("❌ No paid record found for", member.id)
+            print("❌ No record found for", member.id)
             return None
 
-        print("✅ Paid record found for", member.id)
-
-        product = data["data"]["product"]
-        payment_status = data["data"]["status"]
-
-        status = payment_status.lower() in ("paid", "success", "completed", "done")
-
-        if not status:
-            print("❌ Payment status invalid:", payment_status)
-            return None
+        user_type = data.get("type")
+        print("🧪 User type:", user_type)
 
         guild = member.guild
-        paid_role = guild.get_role(FINEST_MEMBER_ROLE)
 
-        # ✅ ASSIGN ROLE
-        if paid_role and paid_role not in member.roles:
-            await member.add_roles(paid_role)
-            print("✅ Finest role assigned")
+        # =========================
+        # 🎁 FREE PACK FLOW
+        # =========================
+        if user_type == "FREE":
+            free_role = guild.get_role(FREEPACK_ROLE_ID)
+            if free_role and free_role not in member.roles:
+                await member.add_roles(free_role)
+                print("🎁 Freepack role assigned")
 
-        # ✅ CREATE TICKET
-        ticket = await create_ticket(member)
-        if ticket:
-            await send_payment_dm(member, ticket)
-            print("✅ Ticket + DM sent")
+            free_channel = bot.get_channel(FREEPACK_CHANNEL_ID)
+            if free_channel:
+                await free_channel.send(
+                    f"🎁 **Free Pack Unlocked!**\n"
+                    f"Welcome {member.mention}\n\n"
+                    f"👉 **Download here:**\n{FREEPACK_DRIVE_LINK}"
+                )
+
+            return None  # ⬅ stop here for FREE
+
+        # =========================
+        # 💳 PAID FLOW
+        # =========================
+        if user_type == "PAID":
+            payment_status = data["data"]["status"].lower()
+
+            if payment_status not in ("paid", "success", "completed", "done"):
+                print("❌ Payment status invalid:", payment_status)
+                return None
+
+            paid_role = guild.get_role(FINEST_MEMBER_ROLE)
+            if paid_role and paid_role not in member.roles:
+                await member.add_roles(paid_role)
+                print("✅ Finest role assigned")
+
+            ticket = await create_ticket(member)
+            if ticket:
+                await send_payment_dm(member, ticket)
+                print("✅ Ticket + DM sent")
+
             return ticket
-
-        print("⚠️ Ticket not created")
-        return None
 
     except Exception as e:
         print("🔥 process_member fatal error:", repr(e))
         return None
+        
 # ================= PAID PACK AUTO-DETECT (NEW USERS) =================
 async def delayed_process_member(member):
     await asyncio.sleep(8)  # allow Google Sheet to sync
