@@ -533,7 +533,7 @@ async def process_member(member):
 
         await asyncio.sleep(5)  # allow Discord cache to settle
 
-        BACKEND_URL = "https://valid-manager-production.up.railway.app"
+        BACKEND_URL = "https://finest-backend-production.up.railway.app"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
