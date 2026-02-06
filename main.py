@@ -499,7 +499,7 @@ async def send_payment_dm(member, ticket_channel):
                 f"Hey **{member.name}** <a:kami_crown:1214643796671733780>\n"
                 "Your purchase was successful!"
             ),
-            color=0x2ECC71
+            color=0x2B2D31
         )
 
         embed.add_field(
