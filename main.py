@@ -761,34 +761,59 @@ async def refresh_cmd(interaction: discord.Interaction):
             ephemeral=True
         )
 
-
 @tree.command(name="profile", description="View your Finest profile")
 async def profile_cmd(interaction: discord.Interaction):
-    sheet = client.open_by_key(SHEET_ID)
-    tab = sheet.worksheet("Profiles")
+    await interaction.response.defer(ephemeral=True)
 
-    discord_id = str(interaction.user.id)
-    ids = tab.col_values(1)
+    member = interaction.user
+    guild = interaction.guild
 
-    if discord_id not in ids:
-        return await interaction.response.send_message("Sir, you have no profile yet. Buy something first 😊", ephemeral=True)
+    # Check backend
+    BACKEND_URL = "https://finest-backend-production.up.railway.app"
 
-    idx = ids.index(discord_id) + 1
-    values = tab.row_values(idx)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"{BACKEND_URL}/check-payment/{member.id}"
+        ) as resp:
+            data = await resp.json()
+
+    user_type = "NONE"
+    status = "Not Purchased"
+
+    if data.get("paid"):
+        user_type = data.get("type", "UNKNOWN")
+        status = data.get("data", {}).get("status", "N/A")
+
+    # Ticket check
+    has_ticket = any(
+        ch.name == f"ticket-{member.id}"
+        for ch in guild.text_channels
+    )
 
     embed = discord.Embed(
-        title=f"🎫 Finest Profile",
-        color=0x2ECC71
+        title="👤 Finest Profile",
+        color=0x2B2D31
     )
-    embed.add_field(name="Name", value=values[1], inline=False)
-    embed.add_field(name="Username", value=values[2], inline=False)
-    embed.add_field(name="Email", value=values[3], inline=False)
-    embed.add_field(name="Last Purchase", value=values[4], inline=False)
-    embed.add_field(name="Join Date", value=values[5], inline=False)
-    embed.add_field(name="Status", value=values[6], inline=False)
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-   
+    embed.add_field(name="Username", value=member.name, inline=True)
+    embed.add_field(name="Discord ID", value=member.id, inline=True)
+    embed.add_field(name="Account Type", value=user_type, inline=False)
+    embed.add_field(name="Payment Status", value=status, inline=False)
+    embed.add_field(
+        name="Support Ticket",
+        value="Open ✅" if has_ticket else "None",
+        inline=False
+    )
+    embed.add_field(
+        name="Joined Server",
+        value=member.joined_at.strftime("%d %b %Y"),
+        inline=False
+    )
+
+    embed.set_footer(text="Finest Store • Live Profile")
+
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
 # ======================  /askai Slash Command  ======================
 
 @tree.command(name="askai", description="Ask Finest AI anything.")
