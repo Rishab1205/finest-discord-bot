@@ -647,6 +647,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
+    # ================= RAID PROTECTION =================
     now = time.time()
     join_tracker.append(now)
 
@@ -656,51 +657,25 @@ async def on_member_join(member):
     if len(join_tracker) >= RAID_JOIN_LIMIT:
         await lock_server(member.guild)
 
-    # existing welcome DM
+    # ================= WELCOME DM =================
     await send_join_dm(member)
 
-    # 🔥 THIS LINE WAS MISSING 🔥
-    await process_member(member)
+    # ================= MAIN ACCESS HANDLER =================
+    # 🔥 SINGLE SOURCE OF TRUTH
+    # Handles:
+    # - FREE PACK users
+    # - PAID users
+    # - Role assignment
+    # - Drive link
+    # - Ticket creation
+    try:
+        await process_member(member)
+    except Exception as e:
+        print("[JOIN PROCESS ERROR]", repr(e))
 
-        # 1️⃣ Unlock backend record
-        try:
-            async with aiohttp.ClientSession() as session:
-                await session.post(
-                    "http://localhost:3000/freepack-unlock",
-                    json={"discord_id": str(member.id)}
-                )
-        except Exception as e:
-            print("[FREEPACK ERROR] Backend unlock failed:", e)
-
-        # 2️⃣ Assign FREE PACK role
-        try:
-            role = member.guild.get_role(1466768164359639175)
-            if role:
-                await member.add_roles(role)
-                print("✅ Freepack role assigned")
-            else:
-                print("❌ Freepack role not found")
-        except Exception as e:
-            print("[ROLE ERROR]", e)
-
-        # 3️⃣ Send Drive link in channel
-        channel = bot.get_channel(FREEPACK_CHANNEL_ID)
-        if channel:
-            await channel.send(
-                f"🎁 **Free Pack Unlocked!**\n"
-                f"Welcome {member.mention} 👋\n\n"
-                f"👉 **Download here:**\n"
-                f"{FREEPACK_DRIVE_LINK}\n\n"
-                f"⚠️ *Do not share this link outside the server.*"
-            )
-
-        # 4️⃣ Cleanup
-        freeClaimUsers.pop(str(member.id), None)
-
-    # ================= PAID PACK HANDLER (FIXED) =================
+    # ================= PAID USER RETRY =================
+    # (does nothing for free users)
     asyncio.create_task(delayed_process_member(member))
-
-
 # ================= PRESENCE =================
 @tasks.loop(minutes=2)
 async def update_status():
