@@ -662,10 +662,6 @@ async def on_member_join(member):
     # 🔥 THIS LINE WAS MISSING 🔥
     await process_member(member)
 
-    # ================= FREE PACK HANDLER =================
-    if str(member.id) in freeClaimUsers:
-        print("🎁 Freepack user joined:", member.id)
-
         # 1️⃣ Unlock backend record
         try:
             async with aiohttp.ClientSession() as session:
