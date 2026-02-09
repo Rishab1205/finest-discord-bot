@@ -546,15 +546,19 @@ async def process_member(member):
 
         guild = member.guild
 
-        # =========================
-        # 🎁 FREE PACK FLOW
-        # =========================
         if user_type == "FREE":
             free_role = guild.get_role(FREEPACK_ROLE_ID)
-            if free_role and free_role not in member.roles:
-                await member.add_roles(free_role)
-                print("🎁 Freepack role assigned")
 
+            # 🛑 STOP: if user already has FreePack role
+            if free_role in member.roles:
+                print("🟡 FreePack already given, skipping:", member.id)
+                return None
+                
+            # ✅ Give role ONCE    
+            await member.add_roles(free_role)
+            print("🎁 FreePack role assigned")
+
+            # ✅ Send Drive link ONCE
             free_channel = bot.get_channel(FREEPACK_CHANNEL_ID)
             if free_channel:
                 await free_channel.send(
@@ -563,7 +567,7 @@ async def process_member(member):
                     f"👉 **Download here:**\n{FREEPACK_DRIVE_LINK}"
                 )
 
-            return None  # ⬅ stop here for FREE
+            return None
 
         # =========================
         # 💳 PAID FLOW
