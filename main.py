@@ -787,7 +787,7 @@ PACK_LIST = [
     "Freefire ID"
 ]
 
-@tree.command(name="buy", description="Purchase a Finest pack")
+@shop_group.command(name="buy", description="Purchase a Finest pack")
 @app_commands.describe(pack="Select the pack you want to buy")
 async def buy_cmd(interaction: discord.Interaction, pack: str):
 
