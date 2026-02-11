@@ -69,15 +69,18 @@ def setup_logger():
 logger = setup_logger()
 
 # =========================
-# GLOBAL COOLDOWN SYSTEM
+# SAFE COOLDOWN SYSTEM
 # =========================
 import time
+from functools import wraps
+from discord import Interaction
 
 USER_COOLDOWNS = {}
 
 def cooldown(seconds: int, key: str):
     def decorator(func):
-        async def wrapper(interaction, *args, **kwargs):
+        @wraps(func)
+        async def wrapper(interaction: Interaction, *args, **kwargs):
             now = time.time()
             user_key = (interaction.user.id, key)
 
@@ -92,6 +95,7 @@ def cooldown(seconds: int, key: str):
 
             USER_COOLDOWNS[user_key] = now
             return await func(interaction, *args, **kwargs)
+
         return wrapper
     return decorator
 
