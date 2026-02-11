@@ -28,6 +28,153 @@ from datetime import datetime
 import requests
 from discord.ext.commands import has_role
 
+# =========================
+# ADMIN CHECK
+# =========================
+
+ADMIN_ROLE_ID = 1214555001473732609  # your admin role id
+
+def is_admin():
+    async def predicate(interaction: discord.Interaction):
+        return any(role.id == ADMIN_ROLE_ID for role in interaction.user.roles)
+    return app_commands.check(predicate)
+    
+# =========================
+# LOGGING SYSTEM
+# =========================
+import logging
+from logging.handlers import RotatingFileHandler
+
+def setup_logger():
+    logger = logging.getLogger("finestbot")
+    logger.setLevel(logging.INFO)
+
+    handler = RotatingFileHandler(
+        "bot.log",
+        maxBytes=2_000_000,
+        backupCount=3,
+        encoding="utf-8"
+    )
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s"
+    )
+    handler.setFormatter(formatter)
+
+    if not logger.handlers:
+        logger.addHandler(handler)
+
+    return logger
+
+logger = setup_logger()
+
+# =========================
+# GLOBAL COOLDOWN SYSTEM
+# =========================
+import time
+
+USER_COOLDOWNS = {}
+
+def cooldown(seconds: int, key: str):
+    def decorator(func):
+        async def wrapper(interaction, *args, **kwargs):
+            now = time.time()
+            user_key = (interaction.user.id, key)
+
+            last_used = USER_COOLDOWNS.get(user_key, 0)
+            remaining = seconds - (now - last_used)
+
+            if remaining > 0:
+                return await interaction.response.send_message(
+                    f"⏳ Cooldown: Try again in {remaining:.1f}s",
+                    ephemeral=True
+                )
+
+            USER_COOLDOWNS[user_key] = now
+            return await func(interaction, *args, **kwargs)
+        return wrapper
+    return decorator
+
+# =========================
+# EMBED PAGINATOR
+# =========================
+from discord import ui
+
+class EmbedPaginator(ui.View):
+    def __init__(self, embeds, author_id):
+        super().__init__(timeout=120)
+        self.embeds = embeds
+        self.author_id = author_id
+        self.index = 0
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_button.disabled = self.index <= 0
+        self.next_button.disabled = self.index >= len(self.embeds) - 1
+
+    async def interaction_check(self, interaction):
+        return interaction.user.id == self.author_id
+
+    @ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary)
+    async def prev_button(self, interaction, button):
+        self.index -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(
+            embed=self.embeds[self.index],
+            view=self
+        )
+
+    @ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction, button):
+        self.index += 1
+        self.update_buttons()
+        await interaction.response.edit_message(
+            embed=self.embeds[self.index],
+            view=self
+        )
+
+    @ui.button(label="Close", style=discord.ButtonStyle.danger)
+    async def close_button(self, interaction, button):
+        await interaction.response.edit_message(view=None)
+
+# =========================
+# PREMIUM ANIMATED UI
+# =========================
+import asyncio
+
+class PremiumUI(ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=60)
+        self.author_id = author_id
+
+    async def interaction_check(self, interaction):
+        return interaction.user.id == self.author_id
+
+    @ui.button(label="Start Premium Process", style=discord.ButtonStyle.success)
+    async def start_process(self, interaction, button):
+        button.disabled = True
+        await interaction.response.edit_message(view=self)
+
+        embed = discord.Embed(
+            title="✨ Premium Checkout",
+            description="⏳ Creating order...",
+            color=0x2B2D31
+        )
+
+        await interaction.edit_original_response(embed=embed)
+
+        await asyncio.sleep(1)
+        embed.description = "✅ Order created\n⏳ Verifying..."
+        await interaction.edit_original_response(embed=embed)
+
+        await asyncio.sleep(1)
+        embed.description = "✅ Verified\n🎁 Granting access..."
+        await interaction.edit_original_response(embed=embed)
+
+        await asyncio.sleep(1)
+        embed.description = "🎉 Done! Premium Activated."
+        await interaction.edit_original_response(embed=embed, view=None)
+        
 # ================= GOOGLE SHEETS CLIENT (STEP 2) =================
 import gspread
 from google.oauth2.service_account import Credentials
@@ -648,6 +795,8 @@ async def on_ready():
 
     except Exception as e:
         print("❌ on_ready failed:", repr(e))
+        
+    logger.info("Bot started successfully.")
 
 @bot.event
 async def on_member_join(member):
@@ -723,6 +872,10 @@ async def ticket_cmd(interaction: Interaction):
             )
     await interaction.response.send_modal(TicketModal(member))
 
+@tree.command(name="revive", description="Revive purchase")
+@cooldown(20, "refresh")
+async def revive_cmd(interaction: discord.Interaction):
+    
 @tree.command(name="price", description="View product / membership pricing")
 async def price_cmd(interaction: Interaction):
     await interaction.response.send_message(embed=membership_embed())
@@ -743,6 +896,46 @@ async def resync(interaction: discord.Interaction):
     else:
         await interaction.followup.send("❌ No paid record found yet.", ephemeral=True)
 
+@tree.command(name="premiumui", description="Premium animated UI demo")
+async def premiumui(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="💎 Premium Panel",
+        description="Click to begin premium process.",
+        color=0x2B2D31
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=PremiumUI(interaction.user.id),
+        ephemeral=True
+    )
+
+@tree.command(name="admin", description="Admin Dashboard")
+@is_admin()
+async def admin_dashboard(interaction: discord.Interaction):
+
+    embed1 = discord.Embed(
+        title="🛡 Admin Dashboard • Bot Status",
+        color=0x2B2D31
+    )
+    embed1.add_field(name="Bot", value="Online ✅", inline=False)
+    embed1.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=False)
+
+    embed2 = discord.Embed(
+        title="🛡 Admin Dashboard • Stats",
+        color=0x2B2D31
+    )
+    embed2.add_field(name="Total Guilds", value=str(len(bot.guilds)), inline=False)
+    embed2.add_field(name="Users Cached", value=str(len(bot.users)), inline=False)
+
+    embeds = [embed1, embed2]
+
+    await interaction.response.send_message(
+        embed=embed1,
+        view=EmbedPaginator(embeds, interaction.user.id),
+        ephemeral=True
+    )
+   
 @tree.command(name="refresh", description="Sync your purchase & unlock access")
 async def refresh_cmd(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -761,6 +954,35 @@ async def refresh_cmd(interaction: discord.Interaction):
             ephemeral=True
         )
 
+@tree.command(name="storepages", description="View store pages")
+async def storepages(interaction: discord.Interaction):
+
+    embed1 = discord.Embed(
+        title="🛒 Finest Store • Page 1",
+        description="Optimization Pack\nSensi Pack",
+        color=0x2B2D31
+    )
+
+    embed2 = discord.Embed(
+        title="🛒 Finest Store • Page 2",
+        description="Optimization Pro\nFinest Sensi Pro",
+        color=0x2B2D31
+    )
+
+    embed3 = discord.Embed(
+        title="🛒 Finest Store • Page 3",
+        description="Prime Pack\nDiscord Services\nFreefire IDs",
+        color=0x2B2D31
+    )
+
+    embeds = [embed1, embed2, embed3]
+
+    await interaction.response.send_message(
+        embed=embed1,
+        view=EmbedPaginator(embeds, interaction.user.id),
+        ephemeral=True
+    )
+    
 @tree.command(name="profile", description="View your Finest profile")
 async def profile_cmd(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -1474,6 +1696,10 @@ class DeviceSpecsModal(discord.ui.Modal, title="Device Specifications"):
         # ping staff
         # save transcript
 
+@bot.event
+async def on_app_command_error(interaction, error):
+    logger.error(f"Slash command error: {error}")
+    
 # ================= START =================
 keep_alive()
 bot.run(TOKEN)
