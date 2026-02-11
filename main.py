@@ -875,6 +875,20 @@ async def ticket_cmd(interaction: Interaction):
 @tree.command(name="revive", description="Revive purchase")
 @cooldown(20, "refresh")
 async def revive_cmd(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    ticket = await process_member(interaction.user)
+
+    if ticket:
+        await interaction.followup.send(
+            "✅ Purchase revived successfully.",
+            ephemeral=True
+        )
+    else:
+        await interaction.followup.send(
+            "❌ No paid record found yet.",
+            ephemeral=True
+        )
     
 @tree.command(name="price", description="View product / membership pricing")
 async def price_cmd(interaction: Interaction):
