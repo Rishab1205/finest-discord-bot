@@ -329,6 +329,7 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
+GUILD = discord.Object(id=GUILD_ID)
 start_time = datetime.utcnow()
 
 # ================= RAID DETECTION =================
