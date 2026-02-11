@@ -792,9 +792,9 @@ async def send_join_dm(member):
 @bot.event
 async def on_ready():
     try:
-        await tree.sync()  # ✅ GLOBAL ONLY
-        print("✅ Bot online & global commands synced")
-
+        await tree.sync(guild=discord.Object(id=GUILD_ID))
+        print("✅ Guild slash commands synced instantly")
+        
         update_status.start()
 
     except Exception as e:
