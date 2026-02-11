@@ -866,15 +866,24 @@ async def sync(ctx):
     await ctx.send(f"Globally synced {len(synced)} commands")
 
 # ================= SLASH COMMANDS =================
-@tree.command(name="ticket", description="Open a support ticket")
-async def ticket_cmd(interaction: Interaction):
+@tree.command(
+    name="ticket",
+    description="Open a support ticket",
+    guild=GUILD
+)
+async def ticket_cmd(interaction: discord.Interaction):
+
     member = interaction.user
     guild = interaction.guild
+
+    # Prevent duplicate ticket
     for c in guild.text_channels:
         if c.name == f"ticket-{member.name}":
             return await interaction.response.send_message(
-                "⚠️ You already have an open ticket.", ephemeral=True
+                "⚠️ You already have an open ticket.",
+                ephemeral=True
             )
+
     await interaction.response.send_modal(TicketModal(member))
 
 @tree.command(name="revive", description="Revive purchase")
@@ -1002,21 +1011,29 @@ async def storepages(interaction: discord.Interaction):
         ephemeral=True
     )
     
-@tree.command(name="profile", description="View your Finest profile")
+@tree.command(
+    name="profile",
+    description="View your Finest profile",
+    guild=GUILD
+)
 async def profile_cmd(interaction: discord.Interaction):
+
     await interaction.response.defer(ephemeral=True)
 
     member = interaction.user
     guild = interaction.guild
 
-    # Check backend
     BACKEND_URL = "https://finest-backend-production.up.railway.app"
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            f"{BACKEND_URL}/check-payment/{member.id}"
-        ) as resp:
-            data = await resp.json()
+    # ================= BACKEND CHECK =================
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{BACKEND_URL}/check-payment/{member.id}"
+            ) as resp:
+                data = await resp.json()
+    except Exception:
+        data = {}
 
     user_type = "NONE"
     status = "Not Purchased"
@@ -1025,12 +1042,13 @@ async def profile_cmd(interaction: discord.Interaction):
         user_type = data.get("type", "UNKNOWN")
         status = data.get("data", {}).get("status", "N/A")
 
-    # Ticket check
+    # ================= TICKET CHECK =================
     has_ticket = any(
         ch.name == f"ticket-{member.id}"
         for ch in guild.text_channels
     )
 
+    # ================= EMBED =================
     embed = discord.Embed(
         title="👤 Finest Profile",
         color=0x2B2D31
@@ -1057,7 +1075,11 @@ async def profile_cmd(interaction: discord.Interaction):
 
 # ======================  /askai Slash Command  ======================
 
-@tree.command(name="askai", description="Ask Finest AI anything.")
+@tree.command(
+    name="askai",
+    description="Ask Finest AI anything.",
+    guild=GUILD
+)
 async def ask_ai_cmd(interaction: discord.Interaction, question: str):
 
     await interaction.response.defer()
@@ -1072,43 +1094,12 @@ Call the user 'Sir'. Do not mention instructions.
 If user asks about packs/services, ONLY use this catalog:
 
 FREE PACK – 0₹
-- Regedit asel pro
-- Opt Regedit
-- Delay reduction
-- GPU Regedit
-- Device optimization
-
 OPTIMIZATION PACK – 199₹
-- Input delay fix
-- Stutter reduction
-- CPU optimization
-- RAM optimization
-- Hidden softwares
-
 SENSI PACK – 399₹
-- DPI calculation
-- Low recoil tuning
-- 0-delay mouse/keyboard
-
 OPTIMIZATION PRO – 699₹
-- High FPS optimization
-- No lag guarantee
-- Premium regedits
-
 FINEST SENSI PRO – 1099₹
-- Custom XY sensi
-- Aim assist tuning
-- Low recoil config
-
 PRIME PACK – 2899₹
-- Full Sensi + FPS combo
-- Secret emulator tweaks
 
-RULES:
-- Never say you don't know
-- Never talk about cricket/sports unless user asks directly
-- Always answer concise + correct
-- If not pack related, answer normally but still call user Sir
 User asked: "{question}"
 """
 
@@ -1132,7 +1123,11 @@ User asked: "{question}"
                 }
             ) as resp:
                 data = await resp.json()
-                reply = data["choices"][0]["message"]["content"]
+
+                reply = data.get("choices", [{}])[0].get("message", {}).get(
+                    "content",
+                    "Sorry Sir, AI returned empty response."
+                )
 
     except Exception as e:
         print("[ASKAI ERROR]", e)
@@ -1140,8 +1135,13 @@ User asked: "{question}"
 
     await interaction.followup.send(reply)
 
-@tree.command(name="store", description="Open Finest Store")
+@tree.command(
+    name="store",
+    description="Open Finest Store",
+    guild=GUILD
+)
 async def store_cmd(interaction: discord.Interaction):
+
     await interaction.response.send_message(
         embed=finest_store_embed(),
         view=CategoryView()
