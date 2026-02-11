@@ -329,7 +329,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
-GUILD = discord.Object(id=GUILD_ID)
 start_time = datetime.utcnow()
 
 # ================= RAID DETECTION =================
@@ -793,7 +792,7 @@ async def send_join_dm(member):
 @bot.event
 async def on_ready():
     try:
-        await tree.sync(guild=discord.Object(id=GUILD_ID))
+        await tree.sync
         print("✅ Guild slash commands synced instantly")
         
         update_status.start()
@@ -874,8 +873,6 @@ async def sync(ctx):
 async def ticket_cmd(interaction: discord.Interaction):
 
     member = interaction.user
-    guild = interaction.guild
-
     # Prevent duplicate ticket
     for c in guild.text_channels:
         if c.name == f"ticket-{member.name}":
@@ -1014,7 +1011,6 @@ async def storepages(interaction: discord.Interaction):
 @tree.command(
     name="profile",
     description="View your Finest profile",
-    guild=GUILD
 )
 async def profile_cmd(interaction: discord.Interaction):
 
@@ -1078,7 +1074,6 @@ async def profile_cmd(interaction: discord.Interaction):
 @tree.command(
     name="askai",
     description="Ask Finest AI anything.",
-    guild=GUILD
 )
 async def ask_ai_cmd(interaction: discord.Interaction, question: str):
 
@@ -1138,7 +1133,6 @@ User asked: "{question}"
 @tree.command(
     name="store",
     description="Open Finest Store",
-    guild=GUILD
 )
 async def store_cmd(interaction: discord.Interaction):
 
