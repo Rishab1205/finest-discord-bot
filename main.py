@@ -181,11 +181,11 @@ tree = bot.tree
 start_time = datetime.utcnow()
 
 # ================= STORE GROUP =================
-store_group = app_commands.Group(
+shop_group = app_commands.Group(
     name="shop",
     description="Finest Store commands"
 )
-tree.add_command(store_group)
+tree.add_command(shop_group)
 
 # ================= RAID DETECTION =================
 RAID_JOIN_LIMIT = 5
