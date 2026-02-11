@@ -868,7 +868,6 @@ async def sync(ctx):
 @tree.command(
     name="ticket",
     description="Open a support ticket",
-    guild=GUILD
 )
 async def ticket_cmd(interaction: discord.Interaction):
 
