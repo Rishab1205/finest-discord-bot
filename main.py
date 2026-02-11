@@ -182,7 +182,7 @@ start_time = datetime.utcnow()
 
 # ================= STORE GROUP =================
 store_group = app_commands.Group(
-    name="store",
+    name="shop",
     description="Finest Store commands"
 )
 tree.add_command(store_group)
