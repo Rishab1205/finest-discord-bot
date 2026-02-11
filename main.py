@@ -180,6 +180,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 start_time = datetime.utcnow()
 
+# ================= STORE GROUP =================
+store_group = app_commands.Group(
+    name="store",
+    description="Finest Store commands"
+)
+tree.add_command(store_group)
+
 # ================= RAID DETECTION =================
 RAID_JOIN_LIMIT = 5
 RAID_TIME_WINDOW = 10
@@ -641,16 +648,17 @@ async def send_join_dm(member):
 @bot.event
 async def on_ready():
     try:
-        await tree.sync()  # ✅ GLOBAL ONLY
-        print("✅ Bot online & global commands synced")
+        guild = discord.Object(id=GUILD_ID)
+
+        await tree.sync(guild=guild)   # instant server sync
+        await tree.sync()              # also register globally
+
+        print("✅ Slash commands synced successfully")
 
         update_status.start()
 
     except Exception as e:
-        print("❌ on_ready failed:", repr(e))
-
-@bot.event
-async def on_member_join(member):
+        print("❌ Sync error:", e)
     # ================= RAID PROTECTION =================
     now = time.time()
     join_tracker.append(now)
@@ -708,8 +716,14 @@ async def lock_server(guild):
 # ================= SYNC COMMAND =================
 @bot.command()
 async def sync(ctx):
-    synced = await bot.tree.sync()
-    await ctx.send(f"Globally synced {len(synced)} commands")
+
+    if ctx.author.id != 1138722416177201262:
+        return await ctx.send("❌ Owner only.")
+
+    guild = discord.Object(id=GUILD_ID)
+    synced = await bot.tree.sync(guild=guild)
+
+    await ctx.send(f"✅ Synced {len(synced)} commands.")
 
 # ================= SLASH COMMANDS =================
 @tree.command(name="ticket", description="Open a support ticket")
@@ -761,6 +775,61 @@ async def refresh_cmd(interaction: discord.Interaction):
             ephemeral=True
         )
 
+# ================= BUY COMMAND (PRO VERSION) =================
+
+PACK_LIST = [
+    "Free Pack",
+    "Optimization Pack",
+    "Sensi Pack",
+    "Optimization Pro",
+    "Finest Sensi Pro",
+    "Prime Pack",
+    "Freefire ID"
+]
+
+@tree.command(name="buy", description="Purchase a Finest pack")
+@app_commands.describe(pack="Select the pack you want to buy")
+async def buy_cmd(interaction: discord.Interaction, pack: str):
+
+    pack_key = pack.lower()
+
+    if pack_key not in PRODUCTS:
+        await interaction.response.send_message(
+            "❌ Invalid pack selected sir.",
+            ephemeral=True
+        )
+        return
+
+    product = PRODUCTS[pack_key]
+
+    embed = discord.Embed(
+        title="🛒 Purchase Confirmation",
+        description=(
+            f"**Pack:** {pack}\n"
+            f"**Price:** ₹{product['price']}\n\n"
+            f"{product['desc']}\n\n"
+            "Click confirm to create ticket."
+        ),
+        color=0x2B2D31
+    )
+
+    await interaction.response.send_message(
+        embed=embed,
+        view=BuyConfirmView(pack),
+        ephemeral=True
+    )
+
+@buy_cmd.autocomplete("pack")
+async def pack_autocomplete(
+    interaction: discord.Interaction,
+    current: str
+):
+    return [
+        app_commands.Choice(name=pack, value=pack)
+        for pack in PACK_LIST
+        if current.lower() in pack.lower()
+    ][:25]
+    
 @tree.command(name="profile", description="View your Finest profile")
 async def profile_cmd(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -1284,6 +1353,32 @@ def device_select_embed():
         description="**Please select your device type.**",
         color=0x2B2D31
     )
+
+# ================= BUY CONFIRM VIEW =================
+class BuyConfirmView(discord.ui.View):
+    def __init__(self, pack_name: str):
+        super().__init__(timeout=60)
+        self.pack_name = pack_name
+
+    @discord.ui.button(label="Confirm Purchase", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        ticket = await create_ticket(interaction.user)
+
+        await interaction.response.edit_message(
+            content="✅ Ticket created successfully sir.",
+            embed=None,
+            view=None
+        )
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(
+            content="❌ Purchase cancelled.",
+            embed=None,
+            view=None
+        )
+
 
 class CategoryView(discord.ui.View):
     def __init__(self):
