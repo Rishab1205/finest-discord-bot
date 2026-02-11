@@ -650,10 +650,8 @@ async def on_ready():
     try:
         guild = discord.Object(id=GUILD_ID)
 
-        await tree.sync(guild=guild)   # instant server sync
-        await tree.sync()              # also register globally
-
-        print("✅ Slash commands synced successfully")
+        synced = await tree.sync(guild=guild)
+        print(f"✅ Synced {len(synced)} commands to this server.")
 
         update_status.start()
 
