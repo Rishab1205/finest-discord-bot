@@ -790,7 +790,17 @@ async def send_join_dm(member):
 
     except Exception as e:
         print("❌ DM FAILED FOR", member.name, "REASON:", repr(e))
-        
+
+async def keep_voice_active(vc):
+    while True:
+        try:
+            await vc.ws.speak(True)
+            await asyncio.sleep(15)
+            await vc.ws.speak(False)
+            await asyncio.sleep(5)
+        except:
+            break
+            
 @bot.event
 async def on_ready():
     try:
@@ -816,7 +826,7 @@ async def on_ready():
                 print(f"🎧 Joined voice: {channel.name}")
 
                 # make connection "active" so Discord shows it
-                vc.play(discord.FFmpegPCMAudio("silence.mp3"))
+                bot.loop.create_task(keep_voice_active(vc))
 
         # ✅ start rotating status loop if you use one
         if not update_status.is_running():
