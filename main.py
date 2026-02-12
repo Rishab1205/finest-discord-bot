@@ -796,15 +796,22 @@ async def on_ready():
         await tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Guild slash commands synced instantly")
 
-        # ✅ SET BOT STATUS TEXT
+        # ✅ Status text under bot name
         await bot.change_presence(
             activity=discord.Activity(
-                type=discord.ActivityType.playing,
-                name="/help Subscription Manager"
+                type=discord.ActivityType.watching,
+                name="/help • Subscription Manager"
             )
         )
 
-        # start rotating status loop if you use one
+        # ✅ Join voice channel on startup (so it shows "In voice")
+        channel = bot.get_channel(VOICE_CHANNEL_ID)
+        if isinstance(channel, discord.VoiceChannel):
+            if not channel.guild.voice_client:
+                await channel.connect()
+                print(f"🎧 Joined voice: {channel.name}")
+
+        # ✅ start rotating status loop if you use one
         if not update_status.is_running():
             update_status.start()
 
@@ -812,6 +819,19 @@ async def on_ready():
         print("❌ on_ready failed:", repr(e))
 
     logger.info("Bot started successfully.")
+
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # ✅ if the BOT got disconnected, rejoin
+    if member.id == bot.user.id and after.channel is None:
+        channel = bot.get_channel(VOICE_CHANNEL_ID)
+        if isinstance(channel, discord.VoiceChannel):
+            try:
+                await channel.connect()
+                print("🎧 Re-joined voice after disconnect")
+            except Exception as e:
+                print("❌ Failed to re-join voice:", repr(e))
 
 @bot.event
 async def on_member_join(member):
