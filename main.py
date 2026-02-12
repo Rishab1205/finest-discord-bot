@@ -28,6 +28,7 @@ from datetime import datetime
 import requests
 from discord.ext.commands import has_role
 
+VOICE_STATUS_ID = 1471431727548203059
 # =========================
 # ADMIN CHECK
 # =========================
@@ -805,7 +806,7 @@ async def on_ready():
         )
 
         # ✅ Join voice channel on startup (so it shows "In voice")
-        channel = bot.get_channel(1471431727548203059)
+        channel = bot.get_channel(VOICE_STATUS_ID)
         if isinstance(channel, discord.VoiceChannel):
             if not channel.guild.voice_client:
                 await channel.connect()
