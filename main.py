@@ -795,12 +795,22 @@ async def on_ready():
     try:
         await tree.sync(guild=discord.Object(id=GUILD_ID))
         print("✅ Guild slash commands synced instantly")
-        
-        update_status.start()
+
+        # ✅ SET BOT STATUS TEXT
+        await bot.change_presence(
+            activity=discord.Activity(
+                type=discord.ActivityType.playing,
+                name="/help • Managing Subscriptions"
+            )
+        )
+
+        # start rotating status loop if you use one
+        if not update_status.is_running():
+            update_status.start()
 
     except Exception as e:
         print("❌ on_ready failed:", repr(e))
-        
+
     logger.info("Bot started successfully.")
 
 @bot.event
