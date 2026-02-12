@@ -805,7 +805,7 @@ async def on_ready():
         )
 
         # ✅ Join voice channel on startup (so it shows "In voice")
-        channel = bot.get_channel(VOICE_CHANNEL_ID)
+        channel = bot.get_channel(1471431727548203059)
         if isinstance(channel, discord.VoiceChannel):
             if not channel.guild.voice_client:
                 await channel.connect()
@@ -825,7 +825,7 @@ async def on_ready():
 async def on_voice_state_update(member, before, after):
     # ✅ if the BOT got disconnected, rejoin
     if member.id == bot.user.id and after.channel is None:
-        channel = bot.get_channel(1471431727548203059)
+        channel = bot.get_channel(VOICE_CHANNEL_ID)
         if isinstance(channel, discord.VoiceChannel):
             try:
                 await channel.connect()
