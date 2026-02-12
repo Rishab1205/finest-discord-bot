@@ -825,7 +825,7 @@ async def on_ready():
 async def on_voice_state_update(member, before, after):
     # ✅ if the BOT got disconnected, rejoin
     if member.id == bot.user.id and after.channel is None:
-        channel = bot.get_channel(VOICE_CHANNEL_ID)
+        channel = bot.get_channel(1471431727548203059)
         if isinstance(channel, discord.VoiceChannel):
             try:
                 await channel.connect()
@@ -872,7 +872,7 @@ async def update_status():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name=/help Subscription Manager
+            name="/help • Subscription Manager"
         )
     )
 
