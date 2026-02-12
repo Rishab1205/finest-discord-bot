@@ -801,16 +801,22 @@ async def on_ready():
         await bot.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching,
-                name='/help • Subscription Manager'
+                name="/help • Subscription Manager"
             )
         )
 
-        # ✅ Join voice channel on startup (so it shows "In voice")
+        # ✅ Join voice channel properly (so profile shows "In Voice")
         channel = bot.get_channel(VOICE_STATUS_ID)
         if isinstance(channel, discord.VoiceChannel):
             if not channel.guild.voice_client:
-                await channel.connect()
+
+                await asyncio.sleep(5)  # allow Discord session to fully initialize
+
+                vc = await channel.connect()
                 print(f"🎧 Joined voice: {channel.name}")
+
+                # make connection "active" so Discord shows it
+                vc.play(discord.FFmpegPCMAudio("silence.mp3"))
 
         # ✅ start rotating status loop if you use one
         if not update_status.is_running():
