@@ -842,7 +842,7 @@ async def update_status():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name=f"{guild.member_count} Finest users"
+            name=f"{guild.member_count} (^) Finest users"
         )
     )
 
