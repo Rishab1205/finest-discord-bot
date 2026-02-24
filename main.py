@@ -681,7 +681,7 @@ async def send_payment_dm(member, ticket_channel):
     await asyncio.sleep(1)  # delay for Discord DM handshake
     try:
         embed = discord.Embed(
-            title="<:vg12:1466375282154803220> Payment Confirmed!",
+            title="<:sc_blue_arrow:1475937927854031073> Payment Confirmed!",
             description=(
                 f"Hey **{member.name}** <a:kami_crown:1214643796671733780>\n"
                 "Your purchase was successful!"
@@ -795,7 +795,7 @@ async def process_member(member):
 async def send_join_dm(member):
     try:
         embed = discord.Embed(
-            title="<:vg12:1466375282154803220> Welcome to VALID DC",
+            title="<:sc_blue_arrow:1475937927854031073> Welcome to VALID DC",
             description=(
                 f"Hey **{member.name}**, welcome aboard! <:vg12:1466375282154803220>\n\n"
                 "You're now part of a community built for gamers who respect:\n"
