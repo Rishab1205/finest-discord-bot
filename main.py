@@ -879,7 +879,7 @@ async def on_member_join(member):
 
     # ================= PAID USER RETRY =================
     # (does nothing for free users)
-    asyncio.create_task(delayed_process_member(member))
+    asyncio.create_task(process_member(member))
 # ================= PRESENCE =================
 @tasks.loop(minutes=2)
 async def update_status():
