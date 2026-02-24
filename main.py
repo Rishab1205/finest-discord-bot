@@ -751,15 +751,25 @@ if user_type == "PAID":
         await member.add_roles(paid_role)
         print("✅ Finest role assigned")
 
-    # Create ticket
-    ticket = await create_ticket(member)
+# Create ticket
+ticket = await create_ticket(member)
 
-    if ticket:
-        print("🎫 Ticket created")
-        await send_payment_dm(member, ticket)
-        print("📩 DM sent")
+if ticket:
+    print("🎫 Ticket created")
+    await send_payment_dm(member, ticket)
+    print("📩 DM sent")
 
-    return ticket
+    # 🔥 MARK PAYMENT AS CLAIMED (ADD THIS)
+    try:
+        supabase.table("payments") \
+            .update({"claimed": True}) \
+            .eq("discord_id", str(member.id)) \
+            .execute()
+        print("✅ Marked payment as claimed")
+    except Exception as e:
+        print("⚠ Failed to mark claimed:", e)
+
+return ticket
     
 # ================= PAID PACK AUTO-DETECT (NEW USERS) =================
 async def delayed_process_member(member):
