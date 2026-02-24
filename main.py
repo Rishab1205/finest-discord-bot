@@ -688,14 +688,15 @@ async def process_member(member):
         print("🚨 process_member CALLED for", member.id)
         await asyncio.sleep(5)
 
-        BACKEND_URL = "https://finest-backend-production.up.railway.app"
+        BACKEND_URL = "https://finest-backend.up.railway.app/"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{BACKEND_URL}/check-payment/{member.id}"
             ) as resp:
                 data = await resp.json()
-
+        print("🔍 BACKEND RESPONSE:", data)
+        
         if not data.get("paid"):
             print("❌ No record found for", member.id)
             return None
@@ -728,32 +729,38 @@ async def process_member(member):
 
             return None
 
-        # =========================
-        # 💳 PAID FLOW
-        # =========================
-        if user_type == "PAID":
-            payment_status = data["data"]["status"].lower()
+# =========================
+# 💳 PAID FLOW (SAFE VERSION)
+# =========================
+if user_type == "PAID":
 
-            if payment_status not in ("paid", "success", "completed", "done"):
-                print("❌ Payment status invalid:", payment_status)
-                return None
+    print("🔍 Full backend response:", data)
 
-            paid_role = guild.get_role(FINEST_MEMBER_ROLE)
-            if paid_role and paid_role not in member.roles:
-                await member.add_roles(paid_role)
-                print("✅ Finest role assigned")
+    payment_data = data.get("data", {})
+    payment_status = str(payment_data.get("status", "")).lower()
 
-            ticket = await create_ticket(member)
-            if ticket:
-                await send_payment_dm(member, ticket)
-                print("✅ Ticket + DM sent")
+    print("🧪 Extracted status:", payment_status)
 
-            return ticket
-
-    except Exception as e:
-        print("🔥 process_member fatal error:", repr(e))
+    if payment_status not in ("paid", "success", "completed", "done"):
+        print("❌ Payment status invalid:", payment_status)
         return None
-        
+
+    # Assign role
+    paid_role = guild.get_role(FINEST_MEMBER_ROLE)
+    if paid_role and paid_role not in member.roles:
+        await member.add_roles(paid_role)
+        print("✅ Finest role assigned")
+
+    # Create ticket
+    ticket = await create_ticket(member)
+
+    if ticket:
+        print("🎫 Ticket created")
+        await send_payment_dm(member, ticket)
+        print("📩 DM sent")
+
+    return ticket
+    
 # ================= PAID PACK AUTO-DETECT (NEW USERS) =================
 async def delayed_process_member(member):
     await asyncio.sleep(8)  # allow Google Sheet to sync
