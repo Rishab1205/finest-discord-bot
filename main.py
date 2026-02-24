@@ -588,6 +588,7 @@ async def create_ticket(member: discord.Member, header=None, row=None):
         header = ["Name", "Product", "Payment ID", "Status"]
     if row is None:
         row = [member.name, "PAID PACK", "AUTO", "PAID"]
+
     guild = member.guild
     category = guild.get_channel(TICKET_CATEGORY_ID)
     log = bot.get_channel(LOG_CHANNEL_ID)
@@ -595,32 +596,50 @@ async def create_ticket(member: discord.Member, header=None, row=None):
     if not category:
         print("[ERROR] Ticket category missing.")
         return None
-    # 🔒 Prevent duplicate tickets
+
+    # 🔥 CLEAN USERNAME (premium format)
+    clean_name = re.sub(r'[^a-zA-Z0-9]', '', member.name).lower()
+    channel_name = f"support-{clean_name}"
+
+    # 🔒 Prevent duplicate tickets (correct check)
     for channel in guild.text_channels:
-        if channel.name == f"ticket-{member.name}":
+        if channel.name == channel_name:
+            print("🟡 Existing ticket found:", channel.name)
             return channel
-        
+
     data = dict(zip(header, row))
 
+    # ✅ CREATE CLEAN CHANNEL
     ticket = await guild.create_text_channel(
-        name=f"ticket-{member.id}",
+        name=channel_name,
         category=category,
         overwrites={
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            member: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True)
+            member: discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                attach_files=True
+            )
         }
     )
 
+    # 👮 Staff permissions
     staff_role = guild.get_role(STAFF_ROLE_ID)
     if staff_role:
-        await ticket.set_permissions(staff_role, view_channel=True, send_messages=True, attach_files=True)
+        await ticket.set_permissions(
+            staff_role,
+            view_channel=True,
+            send_messages=True,
+            attach_files=True
+        )
 
+    # 💎 Premium Description
     desc = f"""
 🎫 **Support Activated**
 
 📌 **Next steps**
 • Wait for staff to **claim** your ticket  
-• They will guide you end-to-end
+• They will guide you end-to-end  
 
 📤 **Payment Verification**
 Upload your screenshot → <#{PAYOUT_CHANNEL_ID}>
@@ -633,19 +652,29 @@ Upload your screenshot → <#{PAYOUT_CHANNEL_ID}>
 
 ✨ Finest Support — Zero friction.
 """
+
     await ticket.send(
-        embed=discord.Embed(title="Welcome to Support", description=desc, color=0x2B2D31),
+        embed=discord.Embed(
+            title="Welcome to Finest Support",
+            description=desc,
+            color=0x2B2D31
+        ),
         view=ClaimButton(member)
     )
 
     if staff_role:
-        await ticket.send(f"🔔 **Staff Notice:** {staff_role.mention} please assist this user.")
+        await ticket.send(
+            f"🔔 **Staff Notice:** {staff_role.mention} please assist this user."
+        )
 
     if log:
-        await log.send(f"📂 Ticket created for {member.name} → {ticket.mention}")
+        await log.send(
+            f"📂 Ticket created → {member.name} ({member.id}) | {ticket.mention}"
+        )
+
+    print("✅ Ticket successfully created:", channel_name)
 
     return ticket
-
 # ================= PAYMENT DM (ADDED) =================
 
 async def send_payment_dm(member, ticket_channel):
