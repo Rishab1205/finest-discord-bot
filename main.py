@@ -728,64 +728,48 @@ async def process_member(member):
                 )
 
             return None
+        # =========================
+        # 💳 PAID FLOW (SAFE VERSION)
+        # =========================
+        if user_type == "PAID":
 
-# =========================
-# 💳 PAID FLOW (SAFE VERSION)
-# =========================
-if user_type == "PAID":
+            print("🔍 Full backend response:", data)
 
-    print("🔍 Full backend response:", data)
+            payment_data = data.get("data", {})
+            payment_status = str(payment_data.get("status", "")).lower()
 
-    payment_data = data.get("data", {})
-    payment_status = str(payment_data.get("status", "")).lower()
+            print("🧪 Extracted status:", payment_status)
 
-    print("🧪 Extracted status:", payment_status)
+            if payment_status not in ("paid", "success", "completed", "done"):
+                print("❌ Payment status invalid:", payment_status)
+                return None
 
-    if payment_status not in ("paid", "success", "completed", "done"):
-        print("❌ Payment status invalid:", payment_status)
-        return None
+            # Assign role
+            paid_role = guild.get_role(FINEST_MEMBER_ROLE)
+            if paid_role and paid_role not in member.roles:
+                await member.add_roles(paid_role)
+                print("✅ Finest role assigned")
 
-    # Assign role
-    paid_role = guild.get_role(FINEST_MEMBER_ROLE)
-    if paid_role and paid_role not in member.roles:
-        await member.add_roles(paid_role)
-        print("✅ Finest role assigned")
+            # Create ticket
+            ticket = await create_ticket(member)
 
-# Create ticket
-ticket = await create_ticket(member)
+            if ticket:
+                print("🎫 Ticket created")
+                await send_payment_dm(member, ticket)
+                print("📩 DM sent")
 
-if ticket:
-    print("🎫 Ticket created")
-    await send_payment_dm(member, ticket)
-    print("📩 DM sent")
+                # 🔥 MARK PAYMENT AS CLAIMED
+                try:
+                    supabase.table("payments") \
+                        .update({"claimed": True}) \
+                        .eq("discord_id", str(member.id)) \
+                        .execute()
+                    print("✅ Marked payment as claimed")
+                except Exception as e:
+                    print("⚠ Failed to mark claimed:", e)
 
-    # 🔥 MARK PAYMENT AS CLAIMED (ADD THIS)
-    try:
-        supabase.table("payments") \
-            .update({"claimed": True}) \
-            .eq("discord_id", str(member.id)) \
-            .execute()
-        print("✅ Marked payment as claimed")
-    except Exception as e:
-        print("⚠ Failed to mark claimed:", e)
-
-return ticket
+            return ticket
     
-# ================= PAID PACK AUTO-DETECT (NEW USERS) =================
-async def delayed_process_member(member):
-    await asyncio.sleep(8)  # allow Google Sheet to sync
-
-    for attempt in range(3):
-        result = await process_member(member)
-        if result:
-            print("✅ Paid user processed successfully")
-            return
-
-        print(f"⏳ Retry paid check ({attempt + 1}/3)")
-        await asyncio.sleep(5)
-
-    print("❌ Paid user not found after retries")
-
 # ================= ONBOARDING DM =================
 async def send_join_dm(member):
     try:
