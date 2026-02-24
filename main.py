@@ -769,7 +769,10 @@ async def process_member(member):
                     print("⚠ Failed to mark claimed:", e)
 
             return ticket
-    
+     except Exception as e:
+        print("🔥 process_member fatal error:", repr(e))
+        return None
+         
 # ================= ONBOARDING DM =================
 async def send_join_dm(member):
     try:
