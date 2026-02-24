@@ -688,15 +688,16 @@ async def process_member(member):
         print("🚨 process_member CALLED for", member.id)
         await asyncio.sleep(5)
 
-        BACKEND_URL = "https://finest-backend.up.railway.app/"
+        BACKEND_URL = "https://finest-backend.up.railway.app"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{BACKEND_URL}/check-payment/{member.id}"
             ) as resp:
                 data = await resp.json()
+
         print("🔍 BACKEND RESPONSE:", data)
-        
+
         if not data.get("paid"):
             print("❌ No record found for", member.id)
             return None
@@ -706,34 +707,18 @@ async def process_member(member):
 
         guild = member.guild
 
+        # ================= FREE FLOW =================
         if user_type == "FREE":
             free_role = guild.get_role(FREEPACK_ROLE_ID)
 
-            # 🛑 STOP: if user already has FreePack role
-            if free_role in member.roles:
-                print("🟡 FreePack already given, skipping:", member.id)
-                return None
-                
-            # ✅ Give role ONCE    
-            await member.add_roles(free_role)
-            print("🎁 FreePack role assigned")
-
-            # ✅ Send Drive link ONCE
-            free_channel = bot.get_channel(FREEPACK_CHANNEL_ID)
-            if free_channel:
-                await free_channel.send(
-                    f"🎁 **Free Pack Unlocked!**\n"
-                    f"Welcome {member.mention}\n\n"
-                    f"👉 **Download here:**\n{FREEPACK_DRIVE_LINK}"
-                )
+            if free_role and free_role not in member.roles:
+                await member.add_roles(free_role)
+                print("🎁 FreePack role assigned")
 
             return None
-        # =========================
-        # 💳 PAID FLOW (SAFE VERSION)
-        # =========================
-        if user_type == "PAID":
 
-            print("🔍 Full backend response:", data)
+        # ================= PAID FLOW =================
+        if user_type == "PAID":
 
             payment_data = data.get("data", {})
             payment_status = str(payment_data.get("status", "")).lower()
@@ -758,18 +743,22 @@ async def process_member(member):
                 await send_payment_dm(member, ticket)
                 print("📩 DM sent")
 
-                # 🔥 MARK PAYMENT AS CLAIMED
+                # MARK PAYMENT AS CLAIMED
                 try:
                     supabase.table("payments") \
                         .update({"claimed": True}) \
                         .eq("discord_id", str(member.id)) \
                         .execute()
                     print("✅ Marked payment as claimed")
+
                 except Exception as e:
                     print("⚠ Failed to mark claimed:", e)
 
             return ticket
-     except Exception as e:
+
+        return None
+
+    except Exception as e:
         print("🔥 process_member fatal error:", repr(e))
         return None
          
