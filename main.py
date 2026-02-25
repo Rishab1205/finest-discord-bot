@@ -737,6 +737,36 @@ async def process_member(member):
 
         guild = member.guild
 
+        # ================= FREEPACK V2 =================
+
+        BACKEND_URL = "https://finest-backend.up.railway.app"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{BACKEND_URL}/check-user-v2/{member.id}"
+            ) as resp:
+                free_data = await resp.json()
+                
+        print("🔍 FREE V2:", free_data)
+        
+        if free_data.get("exists") and free_data.get("type") == "FREE":
+            guild = member.guild
+            free_role = guild.get_role(1466768164359639175)  # ✅ YOUR REAL ROLE ID
+            
+            if free_role and free_role not in member.roles:
+                await member.add_roles(free_role)
+                print("🎁 Freepack role assigned (V2)")
+
+                # mark claimed so it doesn't repeat
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        await session.post(
+                            f"{BACKEND_URL}/mark-claimed-v2",
+                            json={"discord_id": str(member.id)}
+                        )
+                except Exception as e:
+                    print("⚠ mark-claimed failed:", e)
+                    
+        return None
         # ================= FREE FLOW =================
         if user_type == "FREE":
             free_role = guild.get_role(FREEPACK_ROLE_ID)
