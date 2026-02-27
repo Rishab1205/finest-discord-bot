@@ -718,7 +718,7 @@ async def process_member(member):
         print("🚨 process_member CALLED for", member.id)
         await asyncio.sleep(5)
 
-        BACKEND_URL = "https://finest-backend.up.railway.app"
+        BACKEND_URL = "https://api.fineststore.online"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
@@ -739,7 +739,7 @@ async def process_member(member):
 
         # ================= FREEPACK V2 =================
 
-        BACKEND_URL = "https://finest-backend.up.railway.app"
+        BACKEND_URL = "https://api.fineststore.online"
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 f"{BACKEND_URL}/check-user-v2/{member.id}"
@@ -1116,7 +1116,7 @@ async def profile_cmd(interaction: discord.Interaction):
     guild = interaction.guild
 
     # Check backend
-    BACKEND_URL = "https://finest-backend-production.up.railway.app"
+    BACKEND_URL = "https://api.fineststore.online"
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
